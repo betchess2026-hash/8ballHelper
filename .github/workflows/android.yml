@@ -23,8 +23,8 @@ jobs:
         mkdir -p bin classes
         export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
         
-        # 1. Prisilno stvaramo potpuno čisti manifest izravno u Linux memoriji
-        cat << 'EOF' > bin/AndroidManifest.xml
+        # Stvaranje čistog manifesta na sigurnoj lokaciji izvan bin mape kako bi se izbjegao 'Duplicate file'
+        cat << 'EOF' > clean_manifest.xml
         <?xml version="1.0" encoding="utf-8"?>
         <manifest xmlns:android="http://android.com" package="com.helper.eightball">
             <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -52,8 +52,8 @@ jobs:
         
         $ANDROID_SDK_ROOT/build-tools/34.0.0/d8 --release --lib $ANDROID_SDK_ROOT/platforms/android-34/android.jar --output bin classes/com/helper/eightball/*.class
         
-        # 2. Pakiranje pomoću ovog novog, zajamčeno čistog manifesta
-        $ANDROID_SDK_ROOT/build-tools/34.0.0/aapt package -f -M bin/AndroidManifest.xml -S $RES_PATH -I $ANDROID_SDK_ROOT/platforms/android-34/android.jar -F bin/8ballHelper-unsigned.apk bin/
+        # Pakiranje resursa pomoću izdvojenog manifesta
+        $ANDROID_SDK_ROOT/build-tools/34.0.0/aapt package -f -M clean_manifest.xml -S $RES_PATH -I $ANDROID_SDK_ROOT/platforms/android-34/android.jar -F bin/8ballHelper-unsigned.apk bin/
         
         cp bin/8ballHelper-unsigned.apk bin/8ballHelper.apk
 
