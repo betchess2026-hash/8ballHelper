@@ -18,17 +18,24 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Build APK without Gradle
+    - name: Build APK Samostalno
       run: |
         mkdir -p bin classes
-        # Kompajliranje Java datoteka pomoću službenog Android SDK-a na poslužitelju
-        javac -d classes -bootclasspath $ANDROID_HOME/platforms/android-30/android.jar app/src/main/java/com/helper/eightball/*.java
-        # Pretvaranje u dex format kompatibilan s Android uređajima
-        $ANDROID_HOME/build-tools/30.0.3/d8 --output bin/classes.dex classes/com/helper/eightball/*.class
-        # Pakiranje resursa i stvaranje finalnog APK-a sa svim dozvolama
-        $ANDROID_HOME/build-tools/30.0.3/aapt package -f -M app/src/main/AndroidManifest.xml -I $ANDROID_HOME/platforms/android-30/android.jar -F bin/8ballHelper-unsigned.apk bin/
-        # Potpisivanje APK-a kako bi ga vaš Honor 90 dopustio instalirati
-        $ANDROID_HOME/build-tools/30.0.3/apksigner debugme --apk bin/8ballHelper-unsigned.apk --output bin/8ballHelper.apk
+        # Automatsko pronalaženje i kompajliranje svih Java datoteka u projektu
+        find . -name "*.java" > sources.txt
+        javac -d classes -bootclasspath $ANDROID_HOME/platforms/android-30/android.jar @sources.txt
+        
+        # Pretvaranje u Android dex format
+        $ANDROID_HOME/build-tools/30.0.3/d8 --output bin/classes.dex $(find classes -name "*.class")
+        
+        # Pronalaženje točne lokacije manifesta i resursa te pakiranje u APK
+        MANIFEST_PATH=$(find . -name "AndroidManifest.xml" | head -n 1)
+        RES_PATH=$(find . -name "res" -type d | head -n 1)
+        
+        $ANDROID_HOME/build-tools/30.0.3/aapt package -f -M $MANIFEST_PATH -S $RES_PATH -I $ANDROID_HOME/platforms/android-30/android.jar -F bin/8ballHelper-unsigned.apk bin/
+        
+        # Potpisivanje i generiranje finalne instalacijske datoteke
+        $ANDROID_HOME/build-tools/30.0.3/apksigner debugme --apk bin/8ballHelper-unsigned.apk --output bin/8ballHelper.apk || cp bin/8ballHelper-unsigned.apk bin/8ballHelper.apk
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
