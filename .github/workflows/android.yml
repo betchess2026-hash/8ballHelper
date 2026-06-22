@@ -29,9 +29,28 @@ jobs:
         cp $(find . -name "EightBallService.java") projekt/src/
         cp $(find . -name "accessibility_service_config.xml") projekt/res/xml/
         
-        # Potpuno ispravan Base64 bez ikakvih tipfelera u XML tagovima
-        echo "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPG1hbmlmZXN0IHhtbG5zOmFuZHJvaWQ9Imh0dHA6Ly9zY2hlbWFzLmFuZHJvaWQuY29tL2Fway9yZXMvYW5kcm9pZCIgcGFja2FnZT0iY29tLmhlbHBlci5laWdodGJhbGwiPgogICAgPHVzZXMtcGVybWlzc2lvbiBhbmRyb2lkOm5hbWU9ImFuZHJvaWQucGVybWlzc2lvbi5TWVNURU1fQUxFUlRfV0lORE9XIiAvPgogICAgPGFwcGxpY2F0aW9uIGFuZHJvaWQ6YWxsb3dCYWNrdXA9InRydWUiIGFuZHJvaWQ6bGFiZWw9IjhCYWxsIEhlbHBlciIgYW5kcm9pZDpzdXBwb3J0c1J0bD0idHJ1ZSI+CiAgICAgICAgPGFjdGl2aXR5IGFuZHJvaWQ6bmFtZT0iY29tLmhlbHBlci5laWdodGJhbGwuTWFpbkFjdGl2aXR5IiBhbmRyb2lkOmV4cG9ydGVkPSJ0cnVlIj4KICAgICAgICAgICAgPGludGVudC1maWx0ZXI+CiAgICAgICAgICAgICAgICA8YWN0aW9uIGFuZHJvaWQ6bmFtZT0iYW5kcm9pZC5pbnRlbnQuYWN0aW9uLk1BSU4iIC8+CiAgICAgICAgICAgICAgICA8Y2F0ZWdvcnkgYW5kcm9pZDpuYW1lPSJhbmRyb2lkLmludGVudC1jYXRlZ29yeS5MQVVOQ0hFUiIgLz4KICAgICAgICAgICAgPC9pbnRlbnQtZmlsdGVyPgogICAgICAgIDwvYWN0aW9uPgogICAgICAgIDxzZXJ2aWNlIGFuZHJvaWQ6bmFtZT0iY29tLmhlbHBlci5laWdodGJhbGwuRWlnaHRCYWxsU2VydmljZSIgYW5kcm9pZDpwZXJtaXNzaW9uPSJhbmRyb2lkLnBlcm1pc3Npb24uQklORF9BQ0NFU1NJQklMSVRZX1NFUlZJQ0UiIGFuZHJvaWQ6ZXhwb3J0ZWQ9InRydWUiPgogICAgICAgICAgICA8aW50ZW50LWZpbHRlcj4KICAgICAgICAgICAgICAgIDxhY3Rpb24gYW5kcm9pZDpuYW1lPSJhbmRyb2lkLmFjY2Vzc2liaWxpdHlzZXJ2aWNlLkFjY2Vzc2liaWxpdHlTZXJ2aWNlIiAvPgogICAgICAgICAgICA8L2ludGVudC1maWx0ZXI+CiAgICAgICAgICAgIDxtZXRhLWRhdGEgYW5kcm9pZDpuYW1lPSJhbmRyb2lkLmFjY2Vzc2liaWxpdHlzZXJ2aWNlIiBhbmRyb2lkOnJlc291cmNlPSJAdHhtbC9hY2Nlc3NpYmlsaXR5X3NlcnZpY2VfY29uZmlnIiAvPgogICAgICAgIDwvc2VydmljZT4KICAgIDwvYXBwbGljYXRpb24+CjwvbWFuaWZlc3Q+" | base64 -d > projekt/AndroidManifest.xml
-        
+        # Manifest kreiramo izravno uz lijevi rub kako bi YAML i XML bili savršeno točni
+        cat << 'EOF' > projekt/AndroidManifest.xml
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://android.com" package="com.helper.eightball">
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <application android:allowBackup="true" android:label="8Ball Helper" android:supportsRtl="true">
+        <activity android:name="com.helper.eightball.MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <service android:name="com.helper.eightball.EightBallService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" />
+        </service>
+    </application>
+</manifest>
+EOF
+
         # Kompajliranje Java koda
         javac --release 8 -d projekt/bin -classpath $ANDROID_SDK_ROOT/platforms/android-34/android.jar projekt/src/*.java
         
