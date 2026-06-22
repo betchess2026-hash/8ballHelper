@@ -29,25 +29,11 @@ jobs:
         cp $(find . -name "EightBallService.java") projekt/src/
         cp $(find . -name "accessibility_service_config.xml") projekt/res/xml/
         
-        # Generiranje čistog manifesta bez ikakvih opasnih YAML znakova ili problema s uvlačenjem koda
-        echo '<?xml version="1.0" encoding="utf-8"?>' > projekt/AndroidManifest.xml
-        echo '<manifest xmlns:android="http://android.com" package="com.helper.eightball">' >> projekt/AndroidManifest.xml
-        echo '    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />' >> projekt/AndroidManifest.xml
-        echo '    <application android:allowBackup="true" android:label="8Ball Helper" android:supportsRtl="true">' >> projekt/AndroidManifest.xml
-        echo '        <activity android:name="com.helper.eightball.MainActivity" android:exported="true">' >> projekt/AndroidManifest.xml
-        echo '            <intent-filter>' >> projekt/AndroidManifest.xml
-        echo '                <action android:name="android.intent.action.MAIN" />' >> projekt/AndroidManifest.xml
-        echo '                <category android:name="android.intent.category.LAUNCHER" />' >> projekt/AndroidManifest.xml
-        echo '            </intent-filter>' >> projekt/AndroidManifest.xml
-        echo '        </activity>' >> projekt/AndroidManifest.xml
-        echo '        <service android:name="com.helper.eightball.EightBallService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true">' >> projekt/AndroidManifest.xml
-        echo '            <intent-filter>' >> projekt/AndroidManifest.xml
-        echo '                <action android:name="android.accessibilityservice.AccessibilityService" />' >> projekt/AndroidManifest.xml
-        echo '            </intent-filter>' >> projekt/AndroidManifest.xml
-        echo '            <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" />' >> projekt/AndroidManifest.xml
-        echo '        </service>' >> projekt/AndroidManifest.xml
-        echo '    </application>' >> projekt/AndroidManifest.xml
-        echo '</manifest>' >> projekt/AndroidManifest.xml
+        # 1. Kopiramo postojeći manifest s tvog repozitorija
+        cp $(find . -name "AndroidManifest.xml" | head -n 1) projekt/AndroidManifest.xml
+        
+        # 2. Linux naredbom u hodu mijenjamo krivi 'http://android.com' u ispravan Android schemas URL
+        sed -i 's|http://android.com|http://android.com|g' projekt/AndroidManifest.xml
         
         # Kompajliranje Java koda
         javac --release 8 -d projekt/bin -classpath $ANDROID_SDK_ROOT/platforms/android-34/android.jar projekt/src/*.java
@@ -55,7 +41,7 @@ jobs:
         # Pretvaranje u DEX format
         $ANDROID_SDK_ROOT/build-tools/34.0.0/d8 --release --lib $ANDROID_SDK_ROOT/platforms/android-34/android.jar --output projekt/bin projekt/bin/com/helper/eightball/*.class
         
-        # Pakiranje resursa uz točno ciljanje -S projekt/res mape
+        # Pakiranje resursa s važećim manifestom
         $ANDROID_SDK_ROOT/build-tools/34.0.0/aapt package -f -M projekt/AndroidManifest.xml -S projekt/res -I $ANDROID_SDK_ROOT/platforms/android-34/android.jar -F projekt/8ballHelper-unaligned.apk projekt/bin
         
         # Poravnanje APK datoteke (Zipalign)
