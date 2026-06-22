@@ -21,22 +21,25 @@ jobs:
     - name: Build APK Samostalno
       run: |
         mkdir -p bin classes
-        # Traženje svih Java datoteka u projektu
+        # Definiranje fiksne i sigurne staze do Android SDK-a na poslužitelju
+        export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+        
+        # Pronalaženje svih Java datoteka u projektu
         find . -name "*.java" > sources.txt
         
-        # Kompajliranje prilagođeno za Javu 17 i Android platformu 30
-        javac --release 8 -d classes -classpath $ANDROID_HOME/platforms/android-30/android.jar @sources.txt
+        # Kompajliranje s eksplicitno definiranom stazom do android.jar datoteke
+        javac --release 8 -d classes -classpath $ANDROID_SDK_ROOT/platforms/android-34/android.jar @sources.txt
         
-        # Pretvaranje u Android dex format pomoću d8 alata
-        $ANDROID_HOME/build-tools/30.0.3/d8 --release --output bin/classes.dex $(find classes -name "*.class")
+        # Pretvaranje kompajliranih klasa u Android dex format pomoću d8 alata
+        $ANDROID_SDK_ROOT/build-tools/34.0.0/d8 --release --output bin/classes.dex $(find classes -name "*.class")
         
-        # Pronalaženje točne lokacije manifesta i resursa te pakiranje u APK
+        # Pronalaženje točne lokacije manifesta i resursa te pakiranje u finalni APK
         MANIFEST_PATH=$(find . -name "AndroidManifest.xml" | head -n 1)
         RES_PATH=$(find . -name "res" -type d | head -n 1)
         
-        $ANDROID_HOME/build-tools/30.0.3/aapt package -f -M $MANIFEST_PATH -S $RES_PATH -I $ANDROID_HOME/platforms/android-30/android.jar -F bin/8ballHelper-unsigned.apk bin/
+        $ANDROID_SDK_ROOT/build-tools/34.0.0/aapt package -f -M $MANIFEST_PATH -S $RES_PATH -I $ANDROID_SDK_ROOT/platforms/android-34/android.jar -F bin/8ballHelper-unsigned.apk bin/
         
-        # Kopiranje nepotpisanog APK-a u finalni format (apksigner se preskače radi stabilnosti)
+        # Kopiranje zapakiranog APK-a u konačni format spremne instalacije
         cp bin/8ballHelper-unsigned.apk bin/8ballHelper.apk
 
     - name: Upload APK
