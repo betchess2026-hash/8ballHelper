@@ -18,14 +18,20 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v4
-
-    - name: Build with Gradle
-      run: gradle assembleDebug --stacktrace
+    - name: Build APK without Gradle
+      run: |
+        mkdir -p bin classes
+        # Kompajliranje Java datoteka pomoću službenog Android SDK-a na poslužitelju
+        javac -d classes -bootclasspath $ANDROID_HOME/platforms/android-30/android.jar app/src/main/java/com/helper/eightball/*.java
+        # Pretvaranje u dex format kompatibilan s Android uređajima
+        $ANDROID_HOME/build-tools/30.0.3/d8 --output bin/classes.dex classes/com/helper/eightball/*.class
+        # Pakiranje resursa i stvaranje finalnog APK-a sa svim dozvolama
+        $ANDROID_HOME/build-tools/30.0.3/aapt package -f -M app/src/main/AndroidManifest.xml -I $ANDROID_HOME/platforms/android-30/android.jar -F bin/8ballHelper-unsigned.apk bin/
+        # Potpisivanje APK-a kako bi ga vaš Honor 90 dopustio instalirati
+        $ANDROID_HOME/build-tools/30.0.3/apksigner debugme --apk bin/8ballHelper-unsigned.apk --output bin/8ballHelper.apk
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: 8ballHelper-APK
-        path: app/build/outputs/apk/debug/app-debug.apk
+        path: bin/8ballHelper.apk
