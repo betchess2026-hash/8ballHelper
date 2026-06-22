@@ -27,36 +27,14 @@ jobs:
         cp $(find . -name "EightBallService.java") projekt/src/
         cp $(find . -name "accessibility_service_config.xml") projekt/res/xml/
         
-        # Stvaramo privremeni manifest s privremenim oznakama 'XYZ' kako bismo zaobišli bug s dvotočkom
-        cat << 'EOF' > projekt/AndroidManifest.xml
-        <?xml version="1.0" encoding="utf-8"?>
-        <manifest xmlns:XYZ="http://android.com" package="com.helper.eightball">
-            <uses-permission XYZ:name="android.permission.SYSTEM_ALERT_WINDOW" />
-            <application XYZ:allowBackup="true" XYZ:label="8Ball Helper" XYZ:supportsRtl="true">
-                <activity XYZ:name="com.helper.eightball.MainActivity" XYZ:exported="true">
-                    <intent-filter>
-                        <action XYZ:name="android.intent.action.MAIN" />
-                        <category XYZ:name="android.intent.category.LAUNCHER" />
-                    </intent-filter>
-                </activity>
-                <service XYZ:name="com.helper.eightball.EightBallService" XYZ:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" XYZ:exported="true">
-                    <intent-filter>
-                        <action XYZ:name="android.accessibilityservice.AccessibilityService" />
-                    </intent-filter>
-                    <meta-data XYZ:name="android.accessibilityservice" XYZ:resource="@xml/accessibility_service_config" />
-                </service>
-            </application>
-        </manifest>
-        EOF
-        
-        # Linux u hodu pretvara sve 'XYZ' oznake u stopostotno točan 'android:' format neposredno prije kompajliranja
-        sed -i 's/XYZ:/android:/g' projekt/AndroidManifest.xml
+        # Zapisujemo čist i ispravan AndroidManifest u jednom retku kako bismo izbjegli YAML parsiranje dvotočke
+        echo '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.helper.eightball"><uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" /><application android:allowBackup="true" android:label="8Ball Helper" android:supportsRtl="true"><activity android:name="com.helper.eightball.MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity><service android:name="com.helper.eightball.EightBallService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true"><intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter><meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" /></service></application></manifest>' > projekt/AndroidManifest.xml
         
         javac --release 8 -d projekt/bin -classpath $ANDROID_SDK_ROOT/platforms/android-34/android.jar projekt/src/*.java
         
         $ANDROID_SDK_ROOT/build-tools/34.0.0/d8 --release --lib $ANDROID_SDK_ROOT/platforms/android-34/android.jar --output projekt/bin projekt/bin/com/helper/eightball/*.class
         
-        # Pakiranje resursa s precizno modificiranim manifestom
+        # Pakiranje resursa s važećim manifestom
         $ANDROID_SDK_ROOT/build-tools/34.0.0/aapt package -f -M projekt/AndroidManifest.xml -S projekt/res -I $ANDROID_SDK_ROOT/platforms/android-34/android.jar -F projekt/8ballHelper-unsigned.apk projekt/bin
         
         cp projekt/8ballHelper-unsigned.apk projekt/8ballHelper.apk
