@@ -18,13 +18,53 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Build with Gradle
+    - name: Build APK Bez Mape i Bez Gradle-a
       run: |
-        # Generiranje i pokretanje čiste gradnje izravno kroz ugrađeni Gradle u oblaku
-        gradle assembleDebug --stacktrace
+        # 1. Stvaramo potpuno novi, ravan projekt u čistoj mapi izvan svega
+        mkdir -p projekt/src projekt/res/xml projekt/bin
+        export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+        
+        # 2. Kopiramo samo naše čiste Java i XML datoteke na jedno mjesto
+        cp $(find . -name "MainActivity.java") projekt/src/
+        cp $(find . -name "EightBallService.java") projekt/src/
+        cp $(find . -name "accessibility_service_config.xml") projekt/res/xml/
+        
+        # 3. Generiramo 100% čist i provjeren manifest izravno u mapi projekta
+        cat << 'EOF' > projekt/AndroidManifest.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://android.com" package="com.helper.eightball">
+            <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+            <application android:allowBackup="true" android:label="8Ball Helper" android:supportsRtl="true">
+                <activity android:name="com.helper.eightball.MainActivity" android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+                <service android:name="com.helper.eightball.EightBallService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.accessibilityservice.AccessibilityService" />
+                    </intent-filter>
+                    <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" />
+                </service>
+            </application>
+        </manifest>
+        EOF
+        
+        # 4. Pokrećemo kompajliranje i prevođenje koda
+        javac --release 8 -d projekt/bin -classpath $ANDROID_SDK_ROOT/platforms/android-34/android.jar projekt/src/*.java
+        
+        # 5. Pretvaramo u Android dex format izravno u izlaznu mapu
+        $ANDROID_SDK_ROOT/build-tools/34.0.0/d8 --release --lib $ANDROID_SDK_ROOT/platforms/android-34/android.jar --output projekt/bin projekt/bin/com/helper/eightball/*.class
+        
+        # 6. Sklapamo resursni paket bez duplanja datoteka
+        $ANDROID_SDK_ROOT/build-tools/34.0.0/aapt package -f -M projekt/AndroidManifest.xml -S projekt/res -I $ANDROID_SDK_ROOT/platforms/android-34/android.jar -F projekt/8ballHelper-unsigned.apk projekt/bin
+        
+        # 7. Prebacujemo gotov, zapakiran APK na lokaciju za preuzimanje
+        cp projekt/8ballHelper-unsigned.apk projekt/8ballHelper.apk
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: 8ballHelper-APK
-        path: app/build/outputs/apk/debug/app-debug.apk
+        path: projekt/8ballHelper.apk
