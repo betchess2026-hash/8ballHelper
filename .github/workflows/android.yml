@@ -27,17 +27,26 @@ jobs:
         cp $(find . -name "EightBallService.java") projekt/src/
         cp $(find . -name "accessibility_service_config.xml") projekt/res/xml/
         
-        # Zapisujemo čist i ispravan AndroidManifest u jednom retku kako bismo izbjegli YAML parsiranje dvotočke
-        echo '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.helper.eightball"><uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" /><application android:allowBackup="true" android:label="8Ball Helper" android:supportsRtl="true"><activity android:name="com.helper.eightball.MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity><service android:name="com.helper.eightball.EightBallService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true"><intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter><meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" /></service></application></manifest>' > projekt/AndroidManifest.xml
+        # Zapisujemo čist i ispravan AndroidManifest
+        echo '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://android.com" package="com.helper.eightball"><uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" /><application android:allowBackup="true" android:label="8Ball Helper" android:supportsRtl="true"><activity android:name="com.helper.eightball.MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity><service android:name="com.helper.eightball.EightBallService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true"><intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter><meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" /></service></application></manifest>' > projekt/AndroidManifest.xml
         
+        # Kompajliranje Java koda
         javac --release 8 -d projekt/bin -classpath $ANDROID_SDK_ROOT/platforms/android-34/android.jar projekt/src/*.java
         
+        # Pretvaranje u DEX format
         $ANDROID_SDK_ROOT/build-tools/34.0.0/d8 --release --lib $ANDROID_SDK_ROOT/platforms/android-34/android.jar --output projekt/bin projekt/bin/com/helper/eightball/*.class
         
-        # Pakiranje resursa s važećim manifestom
-        $ANDROID_SDK_ROOT/build-tools/34.0.0/aapt package -f -M projekt/AndroidManifest.xml -S projekt/res -I $ANDROID_SDK_ROOT/platforms/android-34/android.jar -F projekt/8ballHelper-unsigned.apk projekt/bin
+        # Pakiranje resursa u neporavnati APK
+        $ANDROID_SDK_ROOT/build-tools/34.0.0/aapt package -f -M projekt/AndroidManifest.xml -S projekt/res -I $ANDROID_SDK_ROOT/platforms/android-34/android.jar -F projekt/8ballHelper-unaligned.apk projekt/bin
         
-        cp projekt/8ballHelper-unsigned.apk projekt/8ballHelper.apk
+        # 1. Poravnanje APK datoteke (Zipalign) - obavezno prije potpisivanja
+        $ANDROID_SDK_ROOT/build-tools/34.0.0/zipalign -v -p 4 projekt/8ballHelper-unaligned.apk projekt/8ballHelper-aligned.apk
+        
+        # 2. Generiranje privremenog keystore ključa za potpisivanje aplikacije
+        keytool -genkeypair -v -keystore projekt/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
+        
+        # 3. Potpisivanje APK-a pomoću apksigner-a
+        $ANDROID_SDK_ROOT/build-tools/34.0.0/apksigner sign --keystore projekt/debug.keystore --storepass android --keypass android --out projekt/8ballHelper.apk projekt/8ballHelper-aligned.apk
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
