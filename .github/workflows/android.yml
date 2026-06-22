@@ -1,36 +1,7 @@
-name: Android CI
-
-on:
-  push:
-    branches: [ "main" ]
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-
-    - name: Build APK Bez Mape i Bez Gradle-a
-      run: |
-        mkdir -p projekt/src projekt/res/xml projekt/bin
-        export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
-        
-        cp $(find . -name "MainActivity.java") projekt/src/
-        cp $(find . -name "EightBallService.java") projekt/src/
-        cp $(find . -name "accessibility_service_config.xml") projekt/res/xml/
-        
         # Stvaramo privremeni manifest s privremenim oznakama 'XYZ' kako bismo zaobišli bug s dvotočkom
         cat << 'EOF' > projekt/AndroidManifest.xml
         <?xml version="1.0" encoding="utf-8"?>
-        <manifest xmlns:XYZ="http://android.com" package="com.helper.eightball">
+        <manifest xmlns:XYZ="http://schemas.android.com/apk/res/android" package="com.helper.eightball">
             <uses-permission XYZ:name="android.permission.SYSTEM_ALERT_WINDOW" />
             <application XYZ:allowBackup="true" XYZ:label="8Ball Helper" XYZ:supportsRtl="true">
                 <activity XYZ:name="com.helper.eightball.MainActivity" XYZ:exported="true">
@@ -48,21 +19,3 @@ jobs:
             </application>
         </manifest>
         EOF
-        
-        # Linux u hodu pretvara sve 'XYZ' oznake u stopostotno točan 'android:' format neposredno prije kompajliranja
-        sed -i 's/XYZ:/android:/g' projekt/AndroidManifest.xml
-        
-        javac --release 8 -d projekt/bin -classpath $ANDROID_SDK_ROOT/platforms/android-34/android.jar projekt/src/*.java
-        
-        $ANDROID_SDK_ROOT/build-tools/34.0.0/d8 --release --lib $ANDROID_SDK_ROOT/platforms/android-34/android.jar --output projekt/bin projekt/bin/com/helper/eightball/*.class
-        
-        # Pakiranje resursa s precizno modificiranim manifestom
-        $ANDROID_SDK_ROOT/build-tools/34.0.0/aapt package -f -M projekt/AndroidManifest.xml -S projekt/res -I $ANDROID_SDK_ROOT/platforms/android-34/android.jar -F projekt/8ballHelper-unsigned.apk projekt/bin
-        
-        cp projekt/8ballHelper-unsigned.apk projekt/8ballHelper.apk
-
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: 8ballHelper-APK
-        path: projekt/8ballHelper.apk
