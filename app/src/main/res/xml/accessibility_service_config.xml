@@ -2,6 +2,7 @@
 <accessibility-service xmlns:android="http://android.com"
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagDefault|flagIncludeNotImportantViews"
+    android:accessibilityFlags="flagDefault|flagIncludeNotImportantViews|flagReportViewIds"
     android:canRetrieveWindowContent="true"
-    android:description="Analiza kuteva u realnom vremenu za 8ballHelper." />
+    android:canRequestFilterKeyEvents="true"
+    android:description="@string/accessibility_service_description" />
