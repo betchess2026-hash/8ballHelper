@@ -22,7 +22,7 @@ jobs:
       run: |
         set -ex
         
-        # 1. Stvaranje kompletne i ispravne strukture za Android resurse
+        # 1. Stvaranje strukture mapa
         mkdir -p projekt/src/com/helper/eightball
         mkdir -p projekt/res/xml
         mkdir -p projekt/res/values
@@ -30,31 +30,52 @@ jobs:
         
         export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
         
-        # 2. Kopiranje tvojih datoteka na njihova mjesta
+        # Kopiranje Java koda i konfiguracije servisa
         cp $(find . -name "MainActivity.java") projekt/src/com/helper/eightball/
         cp $(find . -name "EightBallService.java") projekt/src/com/helper/eightball/
         cp $(find . -name "accessibility_service_config.xml") projekt/res/xml/
-        cp $(find . -name "AndroidManifest.xml" | head -n 1) projekt/AndroidManifest.xml
         
-        # 3. Generiranje obavezne strings.xml datoteke kako aapt ne bi bacio grešku
+        # 2. Direktno upisivanje 100% čistog manifesta kako bismo izbjegli krive verzije
+        cat << 'EOF' > projekt/AndroidManifest.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://android.com" package="com.helper.eightball">
+            <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+            <application android:allowBackup="true" android:label="8Ball Helper" android:supportsRtl="true">
+                <activity android:name="com.helper.eightball.MainActivity" android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+                <service android:name="com.helper.eightball.EightBallService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.accessibilityservice.AccessibilityService" />
+                    </intent-filter>
+                    <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" />
+                </service>
+            </application>
+        </manifest>
+        EOF
+        
+        # 3. Generiranje strings.xml resursa
         echo '<?xml version="1.0" encoding="utf-8"?><resources><string name="app_name">8Ball Helper</string><string name="accessibility_service_description">Analiza kuteva u realnom vremenu za 8ballHelper.</string></resources>' > projekt/res/values/strings.xml
         
-        # 4. Kompajliranje Java klasa
+        # 4. Kompajliranje koda
         javac --release 8 -d projekt/bin -classpath $ANDROID_SDK_ROOT/platforms/android-34/android.jar projekt/src/com/helper/eightball/*.java
         
-        # 5. Prevođenje u DEX (Dalvik Executable) format
+        # 5. DEX formatiranje
         $ANDROID_SDK_ROOT/build-tools/34.0.0/d8 --release --lib $ANDROID_SDK_ROOT/platforms/android-34/android.jar --output projekt/bin projekt/bin/com/helper/eightball/*.class
         
-        # 6. Pakiranje manifesta i stvorenih resursa u neporavnani APK
+        # 6. Pakiranje (aapt) - sada s garantirano ispravnim manifestom
         $ANDROID_SDK_ROOT/build-tools/34.0.0/aapt package -f -M projekt/AndroidManifest.xml -S projekt/res -I $ANDROID_SDK_ROOT/platforms/android-34/android.jar -F projekt/8ballHelper-unaligned.apk projekt/bin
         
-        # 7. Zipalign poravnanje za stabilnost na Honoru 90
+        # 7. Zipalign poravnanje
         $ANDROID_SDK_ROOT/build-tools/34.0.0/zipalign -v -p 4 projekt/8ballHelper-unaligned.apk projekt/8ballHelper-aligned.apk
         
-        # 8. Stvaranje privremenog ključa za potpisivanje aplikacije
+        # 8. Generiranje ključa za potpis
         keytool -genkeypair -v -keystore projekt/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
         
-        # 9. Završno potpisivanje APK datoteke
+        # 9. Potpisivanje APK-a
         $ANDROID_SDK_ROOT/build-tools/34.0.0/apksigner sign --keystore projekt/debug.keystore --storepass android --keypass android --out projekt/8ballHelper.apk projekt/8ballHelper-aligned.apk
 
     - name: Upload APK
