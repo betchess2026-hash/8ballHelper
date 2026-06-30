@@ -22,7 +22,7 @@ jobs:
       run: |
         set -ex
         
-        # 1. Stvaranje strukture mapa
+        # 1. Stvaranje mapa
         mkdir -p projekt/src/com/helper/eightball
         mkdir -p projekt/res/xml
         mkdir -p projekt/res/values
@@ -30,52 +30,36 @@ jobs:
         
         export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
         
-        # Kopiranje Java koda i konfiguracije servisa
+        # Kopiranje koda
         cp $(find . -name "MainActivity.java") projekt/src/com/helper/eightball/
         cp $(find . -name "EightBallService.java") projekt/src/com/helper/eightball/
         cp $(find . -name "accessibility_service_config.xml") projekt/res/xml/
         
-        # 2. Direktno upisivanje 100% čistog manifesta kako bismo izbjegli krive verzije
-        cat << 'EOF' > projekt/AndroidManifest.xml
-        <?xml version="1.0" encoding="utf-8"?>
-        <manifest xmlns:android="http://android.com" package="com.helper.eightball">
-            <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-            <application android:allowBackup="true" android:label="8Ball Helper" android:supportsRtl="true">
-                <activity android:name="com.helper.eightball.MainActivity" android:exported="true">
-                    <intent-filter>
-                        <action android:name="android.intent.action.MAIN" />
-                        <category android:name="android.intent.category.LAUNCHER" />
-                    </intent-filter>
-                </activity>
-                <service android:name="com.helper.eightball.EightBallService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true">
-                    <intent-filter>
-                        <action android:name="android.accessibilityservice.AccessibilityService" />
-                    </intent-filter>
-                    <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" />
-                </service>
-            </application>
-        </manifest>
-        EOF
+        # 2. Manifest u jednoj liniji - eliminiramo problem s razmacima za aapt alat
+        echo '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://android.com" package="com.helper.eightball"><uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" /><application android:allowBackup="true" android:label="8Ball Helper" android:supportsRtl="true"><activity android:name="com.helper.eightball.MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity><service android:name="com.helper.eightball.EightBallService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true"><intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter><meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" /></service></application></manifest>' > projekt/AndroidManifest.xml
         
-        # 3. Generiranje strings.xml resursa
-        echo '<?xml version="1.0" encoding="utf-8"?><resources><string name="app_name">8Ball Helper</string><string name="accessibility_service_description">Analiza kuteva u realnom vremenu za 8ballHelper.</string></resources>' > projekt/res/values/strings.xml
+        # 3. Resursi
+        echo '<?xml version="1.0" encoding="utf-8"?><resources><string name="app_name">8Ball Helper</string><string name="accessibility_service_description">Analiza kuteva u realnom vremenu.</string></resources>' > projekt/res/values/strings.xml
         
-        # 4. Kompajliranje koda
+        # 4. Kompajliranje Jave
         javac --release 8 -d projekt/bin -classpath $ANDROID_SDK_ROOT/platforms/android-34/android.jar projekt/src/com/helper/eightball/*.java
         
-        # 5. DEX formatiranje
+        # 5. Generiranje classes.dex datoteke
         $ANDROID_SDK_ROOT/build-tools/34.0.0/d8 --release --lib $ANDROID_SDK_ROOT/platforms/android-34/android.jar --output projekt/bin projekt/bin/com/helper/eightball/*.class
         
-        # 6. Pakiranje (aapt) - sada s garantirano ispravnim manifestom
-        $ANDROID_SDK_ROOT/build-tools/34.0.0/aapt package -f -M projekt/AndroidManifest.xml -S projekt/res -I $ANDROID_SDK_ROOT/platforms/android-34/android.jar -F projekt/8ballHelper-unaligned.apk projekt/bin
+        # 6. Pakiranje resursa (bez dodavanja bin mape na kraj naredbe)
+        $ANDROID_SDK_ROOT/build-tools/34.0.0/aapt package -f -M projekt/AndroidManifest.xml -S projekt/res -I $ANDROID_SDK_ROOT/platforms/android-34/android.jar -F projekt/8ballHelper-unaligned.apk
         
-        # 7. Zipalign poravnanje
+        # 7. Dodavanje kompajliranog koda (classes.dex) unutar stvorenog APK paketa
+        cd projekt/bin && zip -g ../8ballHelper-unaligned.apk classes.dex && cd ../..
+        
+        # 8. Poravnanje APK datoteke
         $ANDROID_SDK_ROOT/build-tools/34.0.0/zipalign -v -p 4 projekt/8ballHelper-unaligned.apk projekt/8ballHelper-aligned.apk
         
-        # 8. Generiranje ključa za potpis
+        # 9. Izrada ključa
         keytool -genkeypair -v -keystore projekt/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
         
-        # 9. Potpisivanje APK-a
+        # 10. Potpisivanje gotove aplikacije
         $ANDROID_SDK_ROOT/build-tools/34.0.0/apksigner sign --keystore projekt/debug.keystore --storepass android --keypass android --out projekt/8ballHelper.apk projekt/8ballHelper-aligned.apk
 
     - name: Upload APK
