@@ -22,7 +22,7 @@ jobs:
       run: |
         set -ex
         
-        # 1. Stvaranje mapa
+        # 1. Stvaranje mapa resursa i koda
         mkdir -p projekt/src/com/helper/eightball
         mkdir -p projekt/res/xml
         mkdir -p projekt/res/values
@@ -30,15 +30,15 @@ jobs:
         
         export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
         
-        # Kopiranje koda
+        # Kopiranje tvog Java koda i XML konfiguracije
         cp $(find . -name "MainActivity.java") projekt/src/com/helper/eightball/
         cp $(find . -name "EightBallService.java") projekt/src/com/helper/eightball/
         cp $(find . -name "accessibility_service_config.xml") projekt/res/xml/
         
-        # 2. MANIFEST U JEDNOJ LINIJI S ISPRAVNIM XMLNS URL-om
+        # 2. GENERIRANJE MANIFESTA S ISPRAVNIM GOOGLE URL-om (ZAMPAKIRANO U JEDAN RED)
         echo '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://android.com" package="com.helper.eightball"><uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" /><application android:allowBackup="true" android:label="8Ball Helper" android:supportsRtl="true"><activity android:name="com.helper.eightball.MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity><service android:name="com.helper.eightball.EightBallService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true"><intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter><meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" /></service></application></manifest>' > projekt/AndroidManifest.xml
         
-        # 3. Resursi
+        # 3. Resursi aplikacije
         echo '<?xml version="1.0" encoding="utf-8"?><resources><string name="app_name">8Ball Helper</string><string name="accessibility_service_description">Analiza kuteva u realnom vremenu.</string></resources>' > projekt/res/values/strings.xml
         
         # 4. Kompajliranje Jave
@@ -50,7 +50,7 @@ jobs:
         # 6. Pakiranje resursa
         $ANDROID_SDK_ROOT/build-tools/34.0.0/aapt package -f -M projekt/AndroidManifest.xml -S projekt/res -I $ANDROID_SDK_ROOT/platforms/android-34/android.jar -F projekt/8ballHelper-unaligned.apk
         
-        # 7. Dodavanje kompajliranog koda (classes.dex) unutar stvorenog APK paketa
+        # 7. Dodavanje kompajliranog koda u APK paket
         cd projekt/bin && zip -g ../8ballHelper-unaligned.apk classes.dex && cd ../..
         
         # 8. Poravnanje APK datoteke
