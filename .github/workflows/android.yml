@@ -18,39 +18,43 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Build APK direktno iz datoteka
+    - name: Build APK Bez Mape i Bez Gradle-a
       run: |
         set -ex
         
-        # Stvaranje strukture mapa
+        # 1. Stvaranje kompletne i ispravne strukture za Android resurse
         mkdir -p projekt/src/com/helper/eightball
         mkdir -p projekt/res/xml
+        mkdir -p projekt/res/values
         mkdir -p projekt/bin
         
         export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
         
-        # Precizno kopiranje datoteka na ispravne lokacije paketa
+        # 2. Kopiranje tvojih datoteka na njihova mjesta
         cp $(find . -name "MainActivity.java") projekt/src/com/helper/eightball/
         cp $(find . -name "EightBallService.java") projekt/src/com/helper/eightball/
         cp $(find . -name "accessibility_service_config.xml") projekt/res/xml/
         cp $(find . -name "AndroidManifest.xml" | head -n 1) projekt/AndroidManifest.xml
         
-        # 1. Kompajliranje Java koda s Android SDK-om
+        # 3. Generiranje obavezne strings.xml datoteke kako aapt ne bi bacio grešku
+        echo '<?xml version="1.0" encoding="utf-8"?><resources><string name="app_name">8Ball Helper</string><string name="accessibility_service_description">Analiza kuteva u realnom vremenu za 8ballHelper.</string></resources>' > projekt/res/values/strings.xml
+        
+        # 4. Kompajliranje Java klasa
         javac --release 8 -d projekt/bin -classpath $ANDROID_SDK_ROOT/platforms/android-34/android.jar projekt/src/com/helper/eightball/*.java
         
-        # 2. Pretvaranje u DEX format s točnom putanjom do kompajliranih klasa
+        # 5. Prevođenje u DEX (Dalvik Executable) format
         $ANDROID_SDK_ROOT/build-tools/34.0.0/d8 --release --lib $ANDROID_SDK_ROOT/platforms/android-34/android.jar --output projekt/bin projekt/bin/com/helper/eightball/*.class
         
-        # 3. Pakiranje manifesta i XML resursa u privremeni neporavnani APK
+        # 6. Pakiranje manifesta i stvorenih resursa u neporavnani APK
         $ANDROID_SDK_ROOT/build-tools/34.0.0/aapt package -f -M projekt/AndroidManifest.xml -S projekt/res -I $ANDROID_SDK_ROOT/platforms/android-34/android.jar -F projekt/8ballHelper-unaligned.apk projekt/bin
         
-        # 4. Poravnanje APK datoteke za stabilnost na Androidu (Zipalign)
+        # 7. Zipalign poravnanje za stabilnost na Honoru 90
         $ANDROID_SDK_ROOT/build-tools/34.0.0/zipalign -v -p 4 projekt/8ballHelper-unaligned.apk projekt/8ballHelper-aligned.apk
         
-        # 5. Generiranje ključa za potpisivanje (Keystore)
+        # 8. Stvaranje privremenog ključa za potpisivanje aplikacije
         keytool -genkeypair -v -keystore projekt/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
         
-        # 6. Službeno potpisivanje APK datoteke kako bi je Honor 90 dopustio instalirati
+        # 9. Završno potpisivanje APK datoteke
         $ANDROID_SDK_ROOT/build-tools/34.0.0/apksigner sign --keystore projekt/debug.keystore --storepass android --keypass android --out projekt/8ballHelper.apk projekt/8ballHelper-aligned.apk
 
     - name: Upload APK
