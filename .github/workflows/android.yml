@@ -35,7 +35,7 @@ jobs:
         cp $(find . -name "EightBallService.java") projekt/src/com/helper/eightball/
         cp $(find . -name "accessibility_service_config.xml") projekt/res/xml/
         
-        # 2. Manifest u jednoj liniji - eliminiramo problem s razmacima za aapt alat
+        # 2. MANIFEST U JEDNOJ LINIJI S ISPRAVNIM XMLNS URL-om
         echo '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://android.com" package="com.helper.eightball"><uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" /><application android:allowBackup="true" android:label="8Ball Helper" android:supportsRtl="true"><activity android:name="com.helper.eightball.MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity><service android:name="com.helper.eightball.EightBallService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true"><intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter><meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" /></service></application></manifest>' > projekt/AndroidManifest.xml
         
         # 3. Resursi
@@ -47,7 +47,7 @@ jobs:
         # 5. Generiranje classes.dex datoteke
         $ANDROID_SDK_ROOT/build-tools/34.0.0/d8 --release --lib $ANDROID_SDK_ROOT/platforms/android-34/android.jar --output projekt/bin projekt/bin/com/helper/eightball/*.class
         
-        # 6. Pakiranje resursa (bez dodavanja bin mape na kraj naredbe)
+        # 6. Pakiranje resursa
         $ANDROID_SDK_ROOT/build-tools/34.0.0/aapt package -f -M projekt/AndroidManifest.xml -S projekt/res -I $ANDROID_SDK_ROOT/platforms/android-34/android.jar -F projekt/8ballHelper-unaligned.apk
         
         # 7. Dodavanje kompajliranog koda (classes.dex) unutar stvorenog APK paketa
